@@ -1,3 +1,5 @@
+//perks.js
+
 const perks = [
     {
         name: "Action Boy/Girl",
