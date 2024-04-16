@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fallout RPG Character Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <header>
+        <h1>Fallout RPG Character Generator</h1>
+    </header>
+    <main>
+        <section id="origin-selection">
+            <h2>Select Your Origin</h2>
+            <select id="origin-select">
+                <option value="">-- Select Origin --</option>
+                <!-- Add options for the available origins -->
+            </select>
+            <button id="select-origin">Select Origin</button>
+        </section>
+        <section id="special-attributes">
+            <h2>Allocate Your S.P.E.C.I.A.L. Attributes</h2>
+            <ul>
+                <li>
+                    <label for="STR">Strength (STR):</label>
+                    <input type="number" id="STR" name="STR" min="4" max="10" value="5" />
+                </li>
+                <li>
+                    <label for="PER">Perception (PER):</label>
+                    <input type="number" id="PER" name="PER" min="4" max="10" value="5" />
+                </li>
+                <li>
+                    <label for="END">Endurance (END):</label>
+                    <input type="number" id="END" name="END" min="4" max="10" value="5" />
+                </li>
+                <li>
+                    <label for="CHA">Charisma (CHA):</label>
+                    <input type="number" id="CHA" name="CHA" min="4" max="10" value="5" />
+                </li>
+                <li>
+                    <label for="INT">Intelligence (INT):</label>
+                    <input type="number" id="INT" name="INT" min="4" max="10" value="5" />
+                </li>
+                <li>
+                    <label for="AGI">Agility (AGI):</label>
+                    <input type="number" id="AGI" name="AGI" min="4" max="10" value="5" />
+                </li>
+                <li>
+                    <label for="LCK">Luck (LCK):</label>
+                    <input type="number" id="LCK" name="LCK" min="4" max="10" value="5" />
+                </li>
+            </ul>
+            <p>Points remaining: <span id="attribute-points-remaining">5</span></p>
+            <button id="allocate-attributes">Allocate Attributes</button>
+        </section>
+        <section id="tag-skills">
+            <!-- Tag skill selection and skill point allocation content will go here -->
+        </section>
+        <section id="perk-selection">
+            <h2>Select Your Perks</h2>
+            <div id="perk-dropdowns"></div>
+            <button id="select-perks">Select Perks</button>
+        </section>
+        <section id="derived-statistics">
+            <!-- Derived statistics calculation and display will go here -->
+        </section>
+        <section id="starting-equipment">
+            <!-- Starting equipment selection content will go here -->
+        </section>
+        <section id="character-summary">
+            <!-- Final character summary and confirmation will go here -->
+        </section>
+    </main>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
