@@ -32,32 +32,42 @@ function handleOriginSelection() {
     const originSelect = document.getElementById("origin-select");
     const selectedOrigin = originSelect.value;
     if (selectedOrigin) {
+        const origin = origins.find((origin) => origin.name === selectedOrigin);
         // Initialize the character object here
         let character = {
             origin: selectedOrigin,
+            originData: origin, // Store the origin object in the character object
             specialPoints: 5,
             attributes: {
-                str: 5,
-                per: 5,
-                end: 5,
-                cha: 5,
-                int: 5,
-                agi: 5,
-                lck: 5,
+                STR: 5,
+                PER: 5,
+                END: 5,
+                CHA: 5,
+                INT: 5,
+                AGI: 5,
+                LCK: 5,
             },
             skillPoints: 9,
-            tagSkills: [],
+            tagSkills: origin.tag_skills || [],
             skills: {},
             perks: [],
         };
+
+        // Apply attribute modifiers from the selected origin
+        if (origin.attribute_modifiers) {
+            for (const attribute in origin.attribute_modifiers) {
+                character.attributes[attribute] +=
+                    origin.attribute_modifiers[attribute].value;
+            }
+        }
 
         console.log("Selected origin:", character.origin);
         // Update the content of the origin-selection section
         const originSelectionElement =
             document.getElementById("origin-selection");
         originSelectionElement.innerHTML = `
-            <h2>Selected Origin: ${selectedOrigin}</h2>
-        `;
+          <h2>Selected Origin: ${selectedOrigin}</h2>
+      `;
         // Update the character summary section with the selected origin
         const characterSummaryElement =
             document.getElementById("character-summary");
@@ -77,32 +87,31 @@ function renderSpecialAttributes(character) {
     const specialAttributesElement =
         document.getElementById("special-attributes");
     specialAttributesElement.innerHTML = `
-        <h2>Allocate Your S.P.E.C.I.A.L. Attributes</h2>
-        <ul>
-            ${specialAttributes
-                .map(
-                    (attribute) => `
-                <li>
-                    <label for="${attribute.abbreviation}">${attribute.name} (${
-                        attribute.abbreviation
-                    }):</label>
-                    <input type="number" id="${attribute.abbreviation}" name="${
-                        attribute.abbreviation
-                    }" min="4" max="10" value="${
-                        character.attributes[
-                            attribute.abbreviation.toLowerCase()
-                        ]
-                    }">
-                </li>
-            `
-                )
-                .join("")}
-        </ul>
-        <p>Points remaining: <span id="attribute-points-remaining">${
-            character.specialPoints
-        }</span></p>
-        <button id="allocate-attributes">Allocate Attributes</button>
-    `;
+      <h2>Allocate Your S.P.E.C.I.A.L. Attributes</h2>
+      <ul>
+          ${specialAttributes
+              .map((attribute) => {
+                  const abbreviation = attribute.abbreviation;
+                  const originMod =
+                      character.originData.attribute_modifiers &&
+                      character.originData.attribute_modifiers[abbreviation];
+                  const minValue = originMod ? Math.max(originMod.value, 4) : 4; // Ensuring a minimum of 4
+                  const maxValue = originMod ? originMod.max : attribute.max;
+                  const currentValue = character.attributes[abbreviation];
+
+                  return `
+                  <li>
+                      <label for="${abbreviation}">${attribute.name} (${abbreviation}):</label>
+                      <input type="number" id="${abbreviation}" name="${abbreviation}" min="${minValue}" max="${maxValue}" value="${currentValue}">
+                  </li>`;
+              })
+              .join("")}
+      </ul>
+      <p>Points remaining: <span id="attribute-points-remaining">${
+          character.specialPoints
+      }</span></p>
+      <button id="allocate-attributes">Allocate Attributes</button>
+  `;
 
     // Attach event listeners to individual attribute inputs
     specialAttributes.forEach((attribute) => {
@@ -121,26 +130,35 @@ function renderSpecialAttributes(character) {
 }
 
 // Function to handle attribute change
-function handleAttributeChange(character, attributeName) {
-    const attributeInput = document.getElementById(attributeName);
+function handleAttributeChange(character, attributeNameAbbrev) {
+    const attributeInput = document.getElementById(attributeNameAbbrev);
     const inputValue = parseInt(attributeInput.value);
 
-    if (!isNaN(inputValue) && inputValue >= 4 && inputValue <= 10) {
-        const pointsRemaining =
-            character.specialPoints -
-            (inputValue - character.attributes[attributeName.toLowerCase()]);
-        if (pointsRemaining >= 0) {
-            character.attributes[attributeName.toLowerCase()] = inputValue;
-            character.specialPoints = pointsRemaining;
+    const originAttributeMod =
+        character.originData.attribute_modifiers &&
+        character.originData.attribute_modifiers[attributeNameAbbrev]
+            ? character.originData.attribute_modifiers[attributeNameAbbrev]
+            : { value: 4, max: 10 }; // Default to S.P.E.C.I.A.L max if no modifier
+    const minValue = Math.max(4, originAttributeMod.value); // Ensure the minimum is at least 4
+    const maxValue = originAttributeMod.max;
+
+    if (
+        !isNaN(inputValue) &&
+        inputValue >= minValue &&
+        inputValue <= maxValue
+    ) {
+        const pointsChange =
+            inputValue - character.attributes[attributeNameAbbrev];
+        if (character.specialPoints - pointsChange >= 0) {
+            character.attributes[attributeNameAbbrev] = inputValue;
+            character.specialPoints -= pointsChange;
             document.getElementById("attribute-points-remaining").textContent =
                 character.specialPoints;
         } else {
-            attributeInput.value =
-                character.attributes[attributeName.toLowerCase()];
+            attributeInput.value = character.attributes[attributeNameAbbrev];
         }
     } else {
-        attributeInput.value =
-            character.attributes[attributeName.toLowerCase()];
+        attributeInput.value = character.attributes[attributeNameAbbrev];
     }
 }
 
@@ -148,88 +166,99 @@ function handleAttributeChange(character, attributeName) {
 function handleAttributeAllocation(character) {
     console.log("Allocated attributes:", character.attributes);
     // Update the skill points based on the INT attribute
-    character.skillPoints += character.attributes.int;
-    // Hide the S.P.E.C.I.A.L. attributes section and show the next section
+    character.skillPoints = 10 + character.attributes.INT; // Reset to initial plus INT
+    document.getElementById("skill-points-remaining").textContent =
+        character.skillPoints;
     document.getElementById("special-attributes").style.display = "none";
     document.getElementById("tag-skills").style.display = "block";
-
-    // Render the tag skills section
     renderTagSkills(character);
 }
 
 // Function to render the tag skill selection and skill point allocation
 function renderTagSkills(character) {
     const tagSkillsElement = document.getElementById("tag-skills");
-    const tagSkillListElement = document.getElementById("tag-skill-list");
-    tagSkillListElement.innerHTML = skills
-        .map(
-            (skill) => `
-            <li>
-                <input type="checkbox" id="${
-                    skill.name
-                }" name="tag-skill" value="${skill.name}" ${
-                character.tagSkills.includes(skill.name) ? "checked" : ""
-            }>
-                <label for="${skill.name}">${skill.name} (${
-                skill.attribute
-            })</label>
-                <input type="number" id="${skill.name}-rank" name="${
-                skill.name
-            }-rank" min="0" max="3" value="${
-                character.skills[skill.name] || 0
-            }">
-            </li>
-        `
-        )
-        .join("");
+    tagSkillsElement.innerHTML = `
+      <ul>
+          ${skills
+              .map((skill) => {
+                  const isOriginSkill =
+                      character.originData.tag_skills &&
+                      character.originData.tag_skills.includes(skill.name);
+                  const isUserSelected =
+                      character.tagSkills.includes(skill.name) &&
+                      !isOriginSkill;
+                  const initialRank = isOriginSkill
+                      ? 2
+                      : character.skills[skill.name] || 0;
+                  return `
+                  <li>
+                      <input type="checkbox" id="${
+                          skill.name
+                      }" name="tag-skill" value="${skill.name}" ${
+                      isUserSelected ? "checked" : ""
+                  } ${isOriginSkill ? "disabled" : ""}>
+                      <label for="${skill.name}">${skill.name} (${
+                      skill.attribute
+                  }) ${isOriginSkill ? "(Origin Skill)" : ""}</label>
+                      <input type="number" id="${skill.name}-rank" name="${
+                      skill.name
+                  }-rank" min="0" max="3" value="${initialRank}">
+                  </li>`;
+              })
+              .join("")}
+      </ul>
+      <p>Skill Points Remaining: <span id="skill-points-remaining">${
+          character.skillPoints
+      }</span></p>
+      <button id="confirm-tag-skills">Confirm Tag Skills</button>
+  `;
 
-    document.getElementById("skill-points-remaining").textContent =
-        character.skillPoints;
+    document
+        .getElementById("confirm-tag-skills")
+        .addEventListener("click", () => handleTagSkillConfirmation(character));
 
-    // Add event listeners for tag skill selection and skill point allocation
-    tagSkillsElement.addEventListener("change", (event) =>
-        handleTagSkillSelection(event, character)
-    );
-    tagSkillsElement.addEventListener("input", (event) =>
-        handleSkillPointAllocation(event, character)
-    );
+    // Attach event listeners for tag skill checkbox selection and skill point allocation
+    skills.forEach((skill) => {
+        const checkbox = document.getElementById(skill.name);
+        checkbox.addEventListener("change", (event) =>
+            handleTagSkillSelection(event, character)
+        );
 
-    const selectTagSkillsButton = document.getElementById("select-tag-skills");
-    selectTagSkillsButton.addEventListener("click", () =>
-        handleTagSkillConfirmation(character)
-    );
+        const input = document.getElementById(`${skill.name}-rank`);
+        input.addEventListener("input", (event) =>
+            handleSkillPointAllocation(event, character)
+        );
+    });
 }
 
 // Function to handle tag skill selection
 function handleTagSkillSelection(event, character) {
-    const target = event.target;
-    if (target.name === "tag-skill") {
-        const selectedTagSkills = Array.from(
-            document.querySelectorAll('input[name="tag-skill"]:checked')
+    const checkbox = event.target;
+    const skillName = checkbox.value;
+    const isChecked = checkbox.checked;
+    const skillRankInput = document.getElementById(`${skillName}-rank`);
+
+    if (isChecked && !character.tagSkills.includes(skillName)) {
+        const userSelectedTagSkills = character.tagSkills.filter(
+            (skill) =>
+                !character.originData.tag_skills ||
+                !character.originData.tag_skills.includes(skill)
         );
-        if (selectedTagSkills.length > 3) {
-            target.checked = false;
-            alert("You can only select up to 3 tag skills.");
+        if (userSelectedTagSkills.length < 3) {
+            // Check if less than 3 user-selected tag skills
+            character.tagSkills.push(skillName);
+            skillRankInput.value = "2"; // Default rank when selected
+            character.skills[skillName] = 2;
         } else {
-            const skillName = target.value;
-            const skillRankInput = document.getElementById(`${skillName}-rank`);
-            if (target.checked) {
-                character.tagSkills.push(skillName);
-                skillRankInput.value = "2";
-                character.skills[skillName] = 2;
-                character.skillPoints -= 2;
-            } else {
-                const index = character.tagSkills.indexOf(skillName);
-                if (index !== -1) {
-                    character.tagSkills.splice(index, 1);
-                    const previousPoints = character.skills[skillName] || 0;
-                    character.skillPoints += previousPoints;
-                    character.skills[skillName] = 0;
-                    skillRankInput.value = "0";
-                }
-            }
-            document.getElementById("skill-points-remaining").textContent =
-                character.skillPoints;
+            checkbox.checked = false; // Revert checkbox if limit exceeded
+            alert("You can only select up to 3 tag skills.");
+        }
+    } else if (!isChecked) {
+        const index = character.tagSkills.indexOf(skillName);
+        if (index > -1) {
+            character.tagSkills.splice(index, 1);
+            character.skills[skillName] = 0;
+            skillRankInput.value = "0"; // Reset the rank input
         }
     }
 }
@@ -255,7 +284,8 @@ function handleSkillPointAllocation(event, character) {
 
 // Function to handle tag skill confirmation
 function handleTagSkillConfirmation(character) {
-    if (character.tagSkills.length === 3) {
+    const totalSelectedTagSkills = character.tagSkills.length;
+    if (totalSelectedTagSkills >= 3) {
         console.log("Selected tag skills:", character.tagSkills);
         console.log("Skill points allocated:", character.skills);
         // Hide the tag skills section and show the next section
@@ -265,7 +295,11 @@ function handleTagSkillConfirmation(character) {
         // Render the perk selection section
         renderPerkSelection(character);
     } else {
-        alert("Please select 3 tag skills before proceeding.");
+        alert(
+            `Please select ${
+                3 - totalSelectedTagSkills
+            } more tag skills before proceeding.`
+        );
     }
 }
 
@@ -277,6 +311,22 @@ function renderPerkSelection(character) {
     const perkDropdownsElement = document.getElementById("perk-dropdowns");
     perkDropdownsElement.innerHTML = "";
 
+    // Filter the perks based on the character's attributes, level, and other requirements
+    const eligiblePerks = perks.filter((perk) => {
+        const meetsAttributeRequirements = Object.entries(
+            perk.requirements || {}
+        ).every(([attribute, value]) => {
+            if (attribute === "level") {
+                return character.level >= value;
+            } else if (attribute === "robot") {
+                return character.originData.robot === value;
+            } else {
+                return character.attributes[attribute] >= value;
+            }
+        });
+        return meetsAttributeRequirements;
+    });
+
     for (let i = 1; i <= 3; i++) {
         const perkDropdown = document.createElement("select");
         perkDropdown.id = `perk-${i}`;
@@ -286,7 +336,7 @@ function renderPerkSelection(character) {
         defaultOption.textContent = `-- Select Perk ${i} --`;
         perkDropdown.appendChild(defaultOption);
 
-        perks.forEach((perk) => {
+        eligiblePerks.forEach((perk) => {
             const perkOption = document.createElement("option");
             perkOption.value = perk.name;
             perkOption.textContent = perk.name;
