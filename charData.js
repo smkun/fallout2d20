@@ -9,7 +9,8 @@ export const origins = [
         trait: "The Chain that Binds",
         attribute_modifiers: null,
         skill_modifiers: null,
-        tag_skills: ["Energy Weapons", "Science", "Repair"],
+        tag_skill_options: ["Energy Weapons", "Science", "Repair"],
+        tag_skills: null,
         max_skill_ranks: null,
         robot: false
     },

@@ -33,6 +33,44 @@ function handleOriginSelection() {
     const selectedOrigin = originSelect.value;
     if (selectedOrigin) {
         const origin = origins.find((origin) => origin.name === selectedOrigin);
+        let tagSkills = [];
+
+        if (origin.tag_skill_options) {
+            // Show the tag skill option section and populate the dropdown menu
+            const tagSkillOptionSection =
+                document.getElementById("tag-skill-option");
+            const tagSkillSelect = document.getElementById("tag-skill-select");
+            tagSkillSelect.innerHTML = `
+              <option value="">-- Select Tag Skill --</option>
+              ${origin.tag_skill_options
+                  .map(
+                      (skill) => `
+                  <option value="${skill}">${skill}</option>
+              `
+                  )
+                  .join("")}
+          `;
+            tagSkillOptionSection.style.display = "block";
+
+            // Wait for the user to select a tag skill and click the confirm button
+            return new Promise((resolve) => {
+                document
+                    .getElementById("confirm-tag-skill")
+                    .addEventListener("click", () => {
+                        const selectedTagSkill = tagSkillSelect.value;
+                        if (selectedTagSkill) {
+                            tagSkills = [selectedTagSkill];
+                            tagSkillOptionSection.style.display = "none";
+                            resolve();
+                        } else {
+                            alert("Please select a tag skill.");
+                        }
+                    });
+            });
+        } else {
+            tagSkills = origin.tag_skills || [];
+        }
+
         // Initialize the character object here
         let character = {
             origin: selectedOrigin,
@@ -48,9 +86,10 @@ function handleOriginSelection() {
                 LCK: 5,
             },
             skillPoints: 9,
-            tagSkills: origin.tag_skills || [],
+            tagSkills: tagSkills,
             skills: {},
             perks: [],
+            level: 1, // Initialize the level property to 1
         };
 
         // Apply attribute modifiers from the selected origin
@@ -178,40 +217,54 @@ function handleAttributeAllocation(character) {
 function renderTagSkills(character) {
     const tagSkillsElement = document.getElementById("tag-skills");
     tagSkillsElement.innerHTML = `
-      <ul>
-          ${skills
-              .map((skill) => {
-                  const isOriginSkill =
-                      character.originData.tag_skills &&
-                      character.originData.tag_skills.includes(skill.name);
-                  const isUserSelected =
-                      character.tagSkills.includes(skill.name) &&
-                      !isOriginSkill;
-                  const initialRank = isOriginSkill
-                      ? 2
-                      : character.skills[skill.name] || 0;
-                  return `
-                  <li>
-                      <input type="checkbox" id="${
-                          skill.name
-                      }" name="tag-skill" value="${skill.name}" ${
-                      isUserSelected ? "checked" : ""
-                  } ${isOriginSkill ? "disabled" : ""}>
-                      <label for="${skill.name}">${skill.name} (${
-                      skill.attribute
-                  }) ${isOriginSkill ? "(Origin Skill)" : ""}</label>
-                      <input type="number" id="${skill.name}-rank" name="${
-                      skill.name
-                  }-rank" min="0" max="3" value="${initialRank}">
-                  </li>`;
-              })
-              .join("")}
-      </ul>
-      <p>Skill Points Remaining: <span id="skill-points-remaining">${
-          character.skillPoints
-      }</span></p>
-      <button id="confirm-tag-skills">Confirm Tag Skills</button>
-  `;
+    <ul>
+        ${skills
+            .map((skill) => {
+                const isOriginSkill =
+                    character.originData.tag_skills &&
+                    character.originData.tag_skills.includes(skill.name);
+                const isOriginTagSkillOption =
+                    character.originData.tag_skill_options &&
+                    character.originData.tag_skill_options.includes(
+                        skill.name
+                    ) &&
+                    character.tagSkills.includes(skill.name);
+                const isUserSelected =
+                    character.tagSkills.includes(skill.name) &&
+                    !isOriginSkill &&
+                    !isOriginTagSkillOption;
+                const initialRank =
+                    isOriginSkill || isOriginTagSkillOption
+                        ? 2
+                        : character.skills[skill.name] || 0;
+                return `
+                <li>
+                    <input type="checkbox" id="${
+                        skill.name
+                    }" name="tag-skill" value="${skill.name}" ${
+                    isUserSelected ? "checked" : ""
+                } ${isOriginSkill || isOriginTagSkillOption ? "disabled" : ""}>
+                    <label for="${skill.name}">${skill.name} (${
+                    skill.attribute
+                }) ${
+                    isOriginSkill
+                        ? "(Origin Skill)"
+                        : isOriginTagSkillOption
+                        ? "(Origin Tag Skill)"
+                        : ""
+                }</label>
+                    <input type="number" id="${skill.name}-rank" name="${
+                    skill.name
+                }-rank" min="0" max="3" value="${initialRank}">
+                </li>`;
+            })
+            .join("")}
+    </ul>
+    <p>Skill Points Remaining: <span id="skill-points-remaining">${
+        character.skillPoints
+    }</span></p>
+    <button id="confirm-tag-skills">Confirm Tag Skills</button>
+`;
 
     document
         .getElementById("confirm-tag-skills")
